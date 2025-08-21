@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "engines": {
-    "node": ">=20.0.0",
+    "node": "22.x",
     "npm": ">=10.0.0"
   },
   "scripts": {
@@ -52,5 +52,9 @@
     "tsx": "^4.20.4",
     "tw-animate-css": "^1.3.7",
     "typescript": "^5"
+  }
+  ,
+  "overrides": {
+    "picomatch": "^4.0.3"
   }
 }
