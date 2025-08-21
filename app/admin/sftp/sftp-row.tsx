@@ -10,6 +10,11 @@ export function AccountRow({ account }: { account: Account }) {
   function onToggleActive(next: boolean) {
     startTransition(async () => {
       const res = await toggleSftpAccountActiveAction({ id: account.id, isActive: next })
+      if (res?.data?.notFound) {
+        alert("Account no longer exists")
+        window.location.reload()
+        return
+      }
       if (res?.data) setIsActive(res.data.isActive)
       // ignore validation/server errors for brevity here
     })

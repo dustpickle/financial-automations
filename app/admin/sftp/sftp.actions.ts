@@ -66,8 +66,9 @@ export const toggleSftpAccountActiveAction = actionClient
   .schema(z.object({ id: z.string().min(1), isActive: z.boolean() }))
   .action(async ({ parsedInput }) => {
     const { id, isActive } = parsedInput
-    const account = await prisma.sftpAccount.update({ where: { id }, data: { isActive } })
-    return { id: account.id, isActive: account.isActive }
+    const res = await prisma.sftpAccount.updateMany({ where: { id }, data: { isActive } })
+    if (res.count === 0) return { id, isActive, notFound: true as const }
+    return { id, isActive }
   })
 
 export const deleteSftpAccountAction = actionClient
