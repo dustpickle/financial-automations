@@ -67,7 +67,7 @@ jobs:
           sleep 10
           
           # Check if web server is responding
-          curl -f ${{ secrets.DO_WEB_URL }}/api/health || exit 1
+          curl -f http://${{ secrets.DO_HOST }}:3000/api/health || exit 1
           
           # Check if SFTP server port is open
           nc -z ${{ secrets.DO_HOST }} ${{ secrets.SFTP_PORT }} || exit 1
