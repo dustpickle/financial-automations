@@ -28,7 +28,13 @@ export function CreateSftpAccountForm() {
       const errs = Object.values(res.validationErrors as Record<string, { _errors?: string[] }>)
         .flatMap((v) => v?._errors ?? [])
       setErrorMessage(errs.join(", ") || "Validation error")
-    } else if (res.data) setCreated({ username: res.data.username, password: res.data.password })
+    } else if (res.data) {
+      setCreated({ username: res.data.username, password: res.data.password })
+      // Refresh the page after 3 seconds to show the new account
+      setTimeout(() => {
+        window.location.reload()
+      }, 3000)
+    }
     formEl.reset()
   }
 
