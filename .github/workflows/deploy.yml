@@ -40,12 +40,14 @@ jobs:
             echo "📦 Installing dependencies..."
             npm ci --only=production
             
-            # Run database migrations
+            # Load environment variables and run database migrations
             echo "🗄️ Running database migrations..."
+            export $(cat .env.production | xargs)
             npx prisma migrate deploy
             
-            # Build the application
+            # Build the application with environment variables
             echo "🔨 Building application..."
+            export $(cat .env.production | xargs)
             npm run build
             
             # Restart services using PM2
