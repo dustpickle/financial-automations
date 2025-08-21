@@ -54,6 +54,9 @@ async function dispatchWebhook({ url, payload }: { url: string; payload: Webhook
   if (!res.ok) throw new Error(`Webhook failed with status ${res.status}`)
 }
 
+// Global set to track processed files across all connections
+const globalProcessedFiles = new Set<string>()
+
 export function startSftpServer() {
   const { privateKeyPem } = getOrCreateServerHostKey()
   const host = process.env.SFTP_BIND_HOST ?? "0.0.0.0"
@@ -251,9 +254,6 @@ export function startSftpServer() {
             })
           })
 
-          // Track processed files to prevent duplicate webhooks
-          const processedFiles = new Set<string>()
-          
           sftpStream.on("CLOSE", async (reqid: number, handle: Buffer) => {
             const key = handle.toString("hex")
             const entry = openFiles.get(key)
@@ -264,22 +264,34 @@ export function startSftpServer() {
                 // Only send webhook if file exists, has content, and hasn't been processed yet
                 if (accountId && fs.existsSync(entry.absPath)) {
                   const stats = fs.statSync(entry.absPath)
-                  const fileKey = `${entry.absPath}-${stats.size}-${stats.mtime.getTime()}`
+                  const fileKey = `${entry.absPath}-${stats.size}`
                   
-                  if (stats.size > 0 && !processedFiles.has(fileKey)) {
-                    processedFiles.add(fileKey)
+                  if (stats.size > 0 && !globalProcessedFiles.has(fileKey)) {
+                    globalProcessedFiles.add(fileKey)
                     try {
                       console.log(`Sending webhook for: ${entry.filename} (${stats.size} bytes)`)
                       await recordFileAndNotify({ accountId, filePath: entry.filename, absolutePath: entry.absPath })
+                      
+                      // Clean up old entries (keep only last 1000 files)
+                      if (globalProcessedFiles.size > 1000) {
+                        const entries = Array.from(globalProcessedFiles)
+                        globalProcessedFiles.clear()
+                        entries.slice(-500).forEach(entry => globalProcessedFiles.add(entry))
+                      }
                     } catch (err) {
                       console.error("Webhook dispatch failed:", err)
-                      processedFiles.delete(fileKey) // Remove from set if webhook failed
+                      globalProcessedFiles.delete(fileKey) // Remove from set if webhook failed
                     }
                   } else {
                     console.log(`Skipping duplicate webhook for: ${entry.filename}`)
                   }
                 }
-                sftpStream.status(reqid, 0)
+                // Send status response without causing Zlib issues
+                try {
+                  sftpStream.status(reqid, 0)
+                } catch (err) {
+                  console.error("Error sending SFTP status:", err)
+                }
               })
               return
             }
