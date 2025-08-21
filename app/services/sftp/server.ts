@@ -251,6 +251,9 @@ export function startSftpServer() {
             })
           })
 
+          // Track processed files to prevent duplicate webhooks
+          const processedFiles = new Set<string>()
+          
           sftpStream.on("CLOSE", async (reqid: number, handle: Buffer) => {
             const key = handle.toString("hex")
             const entry = openFiles.get(key)
@@ -258,15 +261,22 @@ export function startSftpServer() {
               fs.close(entry.fd, async () => {
                 openFiles.delete(key)
                 const accountId = c.accountId
-                // Only send webhook if file exists and has content (actual upload)
+                // Only send webhook if file exists, has content, and hasn't been processed yet
                 if (accountId && fs.existsSync(entry.absPath)) {
                   const stats = fs.statSync(entry.absPath)
-                  if (stats.size > 0) {
+                  const fileKey = `${entry.absPath}-${stats.size}-${stats.mtime.getTime()}`
+                  
+                  if (stats.size > 0 && !processedFiles.has(fileKey)) {
+                    processedFiles.add(fileKey)
                     try {
+                      console.log(`Sending webhook for: ${entry.filename} (${stats.size} bytes)`)
                       await recordFileAndNotify({ accountId, filePath: entry.filename, absolutePath: entry.absPath })
                     } catch (err) {
                       console.error("Webhook dispatch failed:", err)
+                      processedFiles.delete(fileKey) // Remove from set if webhook failed
                     }
+                  } else {
+                    console.log(`Skipping duplicate webhook for: ${entry.filename}`)
                   }
                 }
                 sftpStream.status(reqid, 0)
