@@ -1,0 +1,84 @@
+name: Deploy SFTP Server to DigitalOcean Droplet
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch: # Allow manual triggers
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production  # Optional: use environment for additional security
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.DO_SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H ${{ secrets.DO_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Deploy to Droplet
+        run: |
+          ssh ${{ secrets.DO_USER }}@${{ secrets.DO_HOST }} << 'EOF'
+            set -e
+            
+            echo "🚀 Starting deployment..."
+            
+            # Navigate to app directory
+            cd ${{ secrets.DO_APP_PATH }}
+            
+            # Pull latest changes
+            echo "📥 Pulling latest changes..."
+            git fetch origin
+            git reset --hard origin/main
+            
+            # Install/update dependencies
+            echo "📦 Installing dependencies..."
+            npm ci --only=production
+            
+            # Run database migrations
+            echo "🗄️ Running database migrations..."
+            npx prisma migrate deploy
+            
+            # Build the application
+            echo "🔨 Building application..."
+            npm run build
+            
+            # Restart services using PM2
+            echo "🔄 Restarting services..."
+            pm2 restart sftp-web || pm2 start ecosystem.config.js --only sftp-web
+            pm2 restart sftp-server || pm2 start ecosystem.config.js --only sftp-server
+            
+            # Save PM2 configuration
+            pm2 save
+            
+            echo "✅ Deployment completed successfully!"
+          EOF
+
+      - name: Health Check
+        run: |
+          echo "🏥 Performing health check..."
+          sleep 10
+          
+          # Check if web server is responding
+          curl -f ${{ secrets.DO_WEB_URL }}/api/health || exit 1
+          
+          # Check if SFTP server port is open
+          nc -z ${{ secrets.DO_HOST }} ${{ secrets.SFTP_PORT }} || exit 1
+          
+          echo "✅ Health check passed!"
+
+      - name: Notify on Success
+        if: success()
+        run: |
+          echo "🎉 Deployment to ${{ secrets.DO_HOST }} completed successfully!"
+
+      - name: Notify on Failure
+        if: failure()
+        run: |
+          echo "❌ Deployment failed! Please check the logs."
