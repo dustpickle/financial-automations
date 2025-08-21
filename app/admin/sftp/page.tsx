@@ -1,5 +1,6 @@
 import { prisma } from "@/app/lib/prisma"
 import { CreateSftpAccountForm } from "@/app/admin/sftp/sftp-form"
+import { AccountRow } from "@/app/admin/sftp/sftp-row"
 
 export default async function SftpAdminPage() {
   const accounts = await prisma.sftpAccount.findMany({ orderBy: { createdAt: "desc" } })
@@ -16,15 +17,7 @@ export default async function SftpAdminPage() {
       <CreateSftpAccountForm />
       <div className="space-y-2">
         {accounts.map((a) => (
-          <div key={a.id} className="border rounded p-4">
-            <div className="font-medium">{a.name}</div>
-            <div className="text-sm text-muted-foreground">username: {a.username}</div>
-            <div className="text-sm text-muted-foreground">password: set on create (not stored in plain text)</div>
-            <div className="text-sm text-muted-foreground">rootDir: {a.rootDir}</div>
-            <div className="text-sm text-muted-foreground">webhook: {a.webhookUrl}</div>
-            <div className="text-sm text-muted-foreground">active: {a.isActive ? "yes" : "no"}</div>
-            <a className="text-sm underline" href={`/admin/sftp/${a.id}/bundle`}>Download connection bundle</a>
-          </div>
+          <AccountRow key={a.id} account={a} />
         ))}
       </div>
     </div>

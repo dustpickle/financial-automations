@@ -60,3 +60,42 @@ function slugify(value: string) {
 }
 
 
+const IdSchema = z.object({ id: z.string().min(1) })
+
+export const toggleSftpAccountActiveAction = actionClient
+  .schema(z.object({ id: z.string().min(1), isActive: z.boolean() }))
+  .action(async ({ parsedInput }) => {
+    const { id, isActive } = parsedInput
+    const account = await prisma.sftpAccount.update({ where: { id }, data: { isActive } })
+    return { id: account.id, isActive: account.isActive }
+  })
+
+export const deleteSftpAccountAction = actionClient
+  .schema(IdSchema)
+  .action(async ({ parsedInput }) => {
+    const { id } = parsedInput
+    const account = await prisma.sftpAccount.findUnique({ where: { id } })
+    if (!account) throw new Error("Account not found")
+
+    // Remove database rows first (events, then account)
+    await prisma.$transaction([
+      prisma.sftpEvent.deleteMany({ where: { accountId: id } }),
+      prisma.sftpAccount.delete({ where: { id } }),
+    ])
+
+    // Best-effort purge of storage directory, guarded by base path
+    const baseDir = process.env.SFTP_STORAGE_ROOT ?? path.join(process.cwd(), "storage", "sftp")
+    const resolvedBase = path.resolve(baseDir)
+    const resolvedRoot = path.resolve(account.rootDir)
+    if (resolvedRoot.startsWith(resolvedBase + path.sep)) {
+      try {
+        fs.rmSync(resolvedRoot, { recursive: true, force: true })
+      } catch {
+        // ignore purge errors; account already deleted in DB
+      }
+    }
+
+    return { id }
+  })
+
+
