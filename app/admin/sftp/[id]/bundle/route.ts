@@ -12,7 +12,7 @@ export async function GET(request: Request) {
   const account = await prisma.sftpAccount.findUnique({ where: { id } })
   if (!account) return NextResponse.json({ error: "Not found" }, { status: 404 })
 
-  const host = process.env.SFTP_HOST ?? "localhost"
+  const host = process.env.SFTP_PUBLIC_HOST ?? process.env.SFTP_HOST ?? "localhost"
   const port = Number(process.env.SFTP_PORT ?? 2222)
 
   const includeClientKey = (process.env.SFTP_INCLUDE_CLIENT_KEYPAIR ?? "true").toLowerCase() !== "false"

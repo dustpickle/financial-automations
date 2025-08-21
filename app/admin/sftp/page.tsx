@@ -4,7 +4,7 @@ import { AccountRow } from "@/app/admin/sftp/sftp-row"
 
 export default async function SftpAdminPage() {
   const accounts = await prisma.sftpAccount.findMany({ orderBy: { createdAt: "desc" } })
-  const host = process.env.SFTP_HOST ?? "localhost"
+  const host = process.env.SFTP_PUBLIC_HOST ?? process.env.SFTP_HOST ?? "localhost"
   const port = Number(process.env.SFTP_PORT ?? 2222)
   const publicKeyNote = process.env.SFTP_SERVER_HOST_PUBLIC_SSH ? "Public key auth supported" : "Password auth only (public key not configured)"
   return (
