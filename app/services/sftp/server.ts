@@ -56,7 +56,7 @@ async function dispatchWebhook({ url, payload }: { url: string; payload: Webhook
 
 export function startSftpServer() {
   const { privateKeyPem } = getOrCreateServerHostKey()
-  const host = process.env.SFTP_HOST ?? "0.0.0.0"
+  const host = process.env.SFTP_BIND_HOST ?? "0.0.0.0"
   const port = Number(process.env.SFTP_PORT ?? 2222)
 
   const server = new Server(

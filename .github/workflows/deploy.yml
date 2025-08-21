@@ -40,9 +40,8 @@ jobs:
             echo "📦 Installing dependencies..."
             npm ci --only=production
             
-            # Update environment with public host
+            # Update environment with public host (keep SFTP_HOST as 0.0.0.0 for server binding)
             echo "⚙️ Updating environment configuration..."
-            sed -i 's/SFTP_HOST=0.0.0.0/SFTP_HOST=0.0.0.0/' .env.production
             echo "SFTP_PUBLIC_HOST=financialautomations.com" >> .env.production
             
             # Load environment variables and run database migrations
