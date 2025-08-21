@@ -9,7 +9,6 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    environment: production  # Optional: use environment for additional security
     
     steps:
       - name: Checkout code
