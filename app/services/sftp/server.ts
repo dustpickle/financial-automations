@@ -258,11 +258,15 @@ export function startSftpServer() {
               fs.close(entry.fd, async () => {
                 openFiles.delete(key)
                 const accountId = c.accountId
-                if (accountId) {
-                  try {
-                    await recordFileAndNotify({ accountId, filePath: entry.filename, absolutePath: entry.absPath })
-                  } catch (err) {
-                    console.error("Webhook dispatch failed:", err)
+                // Only send webhook if file exists and has content (actual upload)
+                if (accountId && fs.existsSync(entry.absPath)) {
+                  const stats = fs.statSync(entry.absPath)
+                  if (stats.size > 0) {
+                    try {
+                      await recordFileAndNotify({ accountId, filePath: entry.filename, absolutePath: entry.absPath })
+                    } catch (err) {
+                      console.error("Webhook dispatch failed:", err)
+                    }
                   }
                 }
                 sftpStream.status(reqid, 0)
